@@ -1,42 +1,44 @@
 # claude-code-idle-overlay
 
-A small always-on-top overlay that shows how long Claude Code has been waiting for your input.
+Claude Codeの応答完了後、ターミナル右下に待機経過時間を表示する小さなオーバーレイ。
+
+[English](README_en.md)
 
 ![overlay screenshot](screenshot.png)
 
-## The Problem
+## 課題
 
-When running multiple Claude Code sessions across different terminals, there's no way to tell which session finished and how long ago. The terminal tab title can't be changed due to ConPTY limitations.
+Claude Codeを複数ターミナルで並列に使っていると、どのセッションがいつ応答を終えたかがわからない。ConPTYの制限でターミナルのタブタイトルも変更できない。
 
-## The Solution
+## 解決策
 
-A tiny semi-transparent overlay appears at the bottom-right corner of the terminal window that completed its response, showing elapsed idle time:
+応答が完了したターミナルの右下に、半透明のオーバーレイで経過時間を表示する:
 
 ```
  ⏳ 2m 15s
 ```
 
-- Appears on the correct terminal window (not just the focused one)
-- Auto-closes when you send the next prompt
-- Click to dismiss manually
-- No dependencies beyond Python's built-in `tkinter`
+- 応答が完了したターミナルに正しく表示（フォーカス中のウィンドウではない）
+- 次のプロンプト送信で自動消去
+- クリックでも閉じられる
+- Python標準の`tkinter`のみ使用、追加依存なし
 
-## Requirements
+## 要件
 
-- **Windows** (uses Win32 API for window positioning)
-- **Python 3.8+** with tkinter (included in standard Python on Windows)
-- **Claude Code** with hooks support
+- **Windows** (ウィンドウ位置取得にWin32 APIを使用)
+- **Python 3.8+** (tkinter付き、Windowsの標準Pythonに同梱)
+- **Claude Code** (hooks対応)
 
-## Installation
+## インストール
 
-1. Clone this repository into your Claude Code hooks directory:
+1. Claude Codeのhooksディレクトリにクローン:
 
 ```bash
 cd ~/.claude/hooks
 git clone https://github.com/johnnymny/claude-code-idle-overlay.git idle_overlay
 ```
 
-2. Add the hooks to your `~/.claude/settings.json`:
+2. `~/.claude/settings.json` にフックを追加:
 
 ```json
 {
@@ -65,41 +67,41 @@ git clone https://github.com/johnnymny/claude-code-idle-overlay.git idle_overlay
 }
 ```
 
-> **Note:** If you already have hooks configured, add the new entries to your existing arrays.
+> **Note:** 既にhooksを設定している場合は、既存の配列に新しいエントリを追加してください。
 
-## How It Works
+## 仕組み
 
 ```
 UserPromptSubmit → idle_overlay_prompt_hook.py
-                   ├── writes .idle_overlay_stop_{session_id}  (closes any existing overlay)
-                   └── saves terminal window rect to .idle_overlay_rect_{session_id}
+                   ├── .idle_overlay_stop_{session_id} を書き込み（既存overlay停止）
+                   └── ターミナルウィンドウのrectを .idle_overlay_rect_{session_id} に保存
 
 Stop → idle_overlay_stop_hook.py
-       ├── reads saved window rect
-       └── spawns idle_overlay.py at bottom-right of that terminal
+       ├── 保存されたrectを読み取り
+       └── そのターミナルの右下に idle_overlay.py を起動
 ```
 
-The key insight: at prompt submission time, the user is definitely typing in the correct terminal, so `GetForegroundWindow()` captures the right window. This rect is saved and reused when the response completes (at which point the user may be looking at a different terminal).
+ポイント: プロンプト送信時はユーザーが必ず正しいターミナルで入力しているため、`GetForegroundWindow()`で正確なウィンドウ位置が取れる。このrectを保存しておき、応答完了時（ユーザーが別のターミナルを見ている可能性がある）に再利用する。
 
-## Configuration
+## カスタマイズ
 
-Edit the constants at the top of `idle_overlay.py`:
+`idle_overlay.py` 先頭の定数を変更:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `BG_COLOR` | `#1e1e2e` | Background color |
-| `FG_COLOR` | `#cdd6f4` | Text color |
-| `ALPHA` | `0.85` | Window opacity (0.0 - 1.0) |
-| `FONT` | `("Segoe UI", 11)` | Font family and size |
-| `COARSE_THRESHOLD` | `300` | Seconds before switching to minute-only display |
-| `MARGIN` | `10` | Pixels from window edge |
+| 変数 | デフォルト | 説明 |
+|------|-----------|------|
+| `BG_COLOR` | `#1e1e2e` | 背景色 |
+| `FG_COLOR` | `#cdd6f4` | テキスト色 |
+| `ALPHA` | `0.85` | 不透明度 (0.0 - 1.0) |
+| `FONT` | `("Segoe UI", 11)` | フォント |
+| `COARSE_THRESHOLD` | `300` | この秒数を超えると分単位のみの表示に切替 |
+| `MARGIN` | `10` | ウィンドウ端からのマージン (px) |
 
-## Limitations
+## 制限事項
 
-- **Windows only** — uses `ctypes.windll` for Win32 window APIs and tkinter's `-toolwindow` attribute
-- **Terminal multiplexers (tmux, screen):** The overlay positions relative to the terminal window, not individual panes. In tmux setups, the overlay will appear at the bottom-right of the entire terminal window
-- **Agent Teams:** The overlay is suppressed during Agent Teams sessions to avoid noise from intermediate stops
+- **Windows専用** — Win32 APIとtkinterの`-toolwindow`属性を使用
+- **ターミナルマルチプレクサ (tmux, screen):** ペイン単位ではなくターミナルウィンドウ全体の右下に表示される
+- **Agent Teams:** Agent Teamsセッション中はオーバーレイを抑制
 
-## License
+## ライセンス
 
 MIT
