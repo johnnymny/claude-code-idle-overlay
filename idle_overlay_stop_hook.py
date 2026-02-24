@@ -7,6 +7,7 @@ import json
 import os
 import glob
 import subprocess
+import time
 
 HOOKS_DIR = os.path.dirname(os.path.abspath(__file__))
 TEAMS_DIR = os.path.join(os.path.expanduser("~"), ".claude", "teams")
@@ -42,7 +43,7 @@ except Exception:
     pass
 
 subprocess.Popen(
-    [sys.executable, OVERLAY_SCRIPT, session_id] + win_args,
+    [sys.executable, OVERLAY_SCRIPT, session_id, str(time.time())] + win_args,
     stdout=subprocess.DEVNULL,
     stderr=subprocess.DEVNULL,
 )
