@@ -1,6 +1,9 @@
 """Stop hook: launch idle overlay on every response completion.
 
 Reads terminal window rect saved by idle_overlay_prompt_hook.py at prompt time.
+Waits LAUNCH_DELAY seconds before launching to skip intermediate Stop events
+(e.g., between tool calls). If the user sends a new prompt during the delay,
+the stop sentinel file will exist and we skip launching.
 """
 import sys
 import json
@@ -8,6 +11,8 @@ import os
 import glob
 import subprocess
 import time
+
+LAUNCH_DELAY = 3  # seconds to wait before launching overlay
 
 HOOKS_DIR = os.path.dirname(os.path.abspath(__file__))
 TEAMS_DIR = os.path.join(os.path.expanduser("~"), ".claude", "teams")
@@ -42,8 +47,22 @@ try:
 except Exception:
     pass
 
+start_time = time.time()
+
+# Clear any existing stop file (written by prompt hook to close previous overlay).
+# Only a NEW prompt submission during the delay should prevent launch.
+stop_file = os.path.join(HOOKS_DIR, f".idle_overlay_stop_{session_id}")
+try:
+    os.remove(stop_file)
+except OSError:
+    pass
+time.sleep(LAUNCH_DELAY)
+
+if os.path.exists(stop_file):
+    sys.exit(0)
+
 subprocess.Popen(
-    [sys.executable, OVERLAY_SCRIPT, session_id, str(time.time())] + win_args,
+    [sys.executable, OVERLAY_SCRIPT, session_id, str(start_time)] + win_args,
     stdout=subprocess.DEVNULL,
     stderr=subprocess.DEVNULL,
 )

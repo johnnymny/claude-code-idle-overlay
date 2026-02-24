@@ -43,7 +43,7 @@ WM_PAINT = 0x000F
 WM_TIMER = 0x0113
 WM_LBUTTONDOWN = 0x0201
 WM_MOUSEACTIVATE = 0x0021
-MA_NOACTIVATEANDEAT = 4
+MA_NOACTIVATE = 3
 DT_CENTER = 0x0001
 DT_VCENTER = 0x0004
 DT_SINGLELINE = 0x0020
@@ -57,9 +57,18 @@ WNDPROC = ctypes.WINFUNCTYPE(
     wintypes.WPARAM, wintypes.LPARAM,
 )
 
+HANDLE = ctypes.c_void_p  # generic handle for HCURSOR, HICON, HBRUSH etc.
+
 user32 = ctypes.windll.user32
 gdi32 = ctypes.windll.gdi32
 kernel32 = ctypes.windll.kernel32
+
+# Set argtypes for Win32 functions to avoid 64-bit overflow errors
+user32.DefWindowProcW.argtypes = [wintypes.HWND, wintypes.UINT,
+                                  wintypes.WPARAM, wintypes.LPARAM]
+user32.DefWindowProcW.restype = ctypes.c_long
+user32.FillRect.argtypes = [wintypes.HDC, ctypes.POINTER(wintypes.RECT), HANDLE]
+user32.FillRect.restype = ctypes.c_int
 
 
 class WNDCLASSEXW(ctypes.Structure):
@@ -70,12 +79,12 @@ class WNDCLASSEXW(ctypes.Structure):
         ("cbClsExtra", ctypes.c_int),
         ("cbWndExtra", ctypes.c_int),
         ("hInstance", wintypes.HINSTANCE),
-        ("hIcon", wintypes.HICON),
-        ("hCursor", wintypes.HCURSOR),
-        ("hbrBackground", wintypes.HBRUSH),
+        ("hIcon", HANDLE),
+        ("hCursor", HANDLE),
+        ("hbrBackground", HANDLE),
         ("lpszMenuName", wintypes.LPCWSTR),
         ("lpszClassName", wintypes.LPCWSTR),
-        ("hIconSm", wintypes.HICON),
+        ("hIconSm", HANDLE),
     ]
 
 
@@ -99,7 +108,7 @@ _brush = None
 
 def _wnd_proc(hwnd, msg, wparam, lparam):
     if msg == WM_MOUSEACTIVATE:
-        return MA_NOACTIVATEANDEAT
+        return MA_NOACTIVATE
 
     if msg == WM_LBUTTONDOWN:
         user32.DestroyWindow(hwnd)
@@ -110,7 +119,7 @@ def _wnd_proc(hwnd, msg, wparam, lparam):
         hdc = user32.BeginPaint(hwnd, ctypes.byref(ps))
         rc = wintypes.RECT()
         user32.GetClientRect(hwnd, ctypes.byref(rc))
-        gdi32.FillRect(hdc, ctypes.byref(rc), _brush)
+        user32.FillRect(hdc, ctypes.byref(rc), _brush)
 
         elapsed = int(time.time() - _start_time)
         m, s = divmod(elapsed, 60)
