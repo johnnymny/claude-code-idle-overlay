@@ -48,10 +48,20 @@ except Exception:
     pass
 
 start_time = time.time()
-
-# Clear any existing stop file (written by prompt hook to close previous overlay).
-# Only a NEW prompt submission during the delay should prevent launch.
 stop_file = os.path.join(HOOKS_DIR, f".idle_overlay_stop_{session_id}")
+pid_file = os.path.join(HOOKS_DIR, f".idle_overlay_pid_{session_id}")
+
+# Skip if overlay already running for this session
+try:
+    with open(pid_file, "r") as f:
+        old_pid = int(f.read().strip())
+    os.kill(old_pid, 0)  # check if process exists (signal 0 = no-op)
+    sys.exit(0)  # still alive → already idle, skip
+except Exception:
+    pass
+
+# Clear stop file left by prompt hook, then wait.
+# Only a NEW prompt submission during the delay should prevent launch.
 try:
     os.remove(stop_file)
 except OSError:
@@ -61,8 +71,12 @@ time.sleep(LAUNCH_DELAY)
 if os.path.exists(stop_file):
     sys.exit(0)
 
-subprocess.Popen(
+proc = subprocess.Popen(
     [sys.executable, OVERLAY_SCRIPT, session_id, str(start_time)] + win_args,
     stdout=subprocess.DEVNULL,
     stderr=subprocess.DEVNULL,
 )
+
+# Save PID so next invocation can kill this overlay
+with open(pid_file, "w") as f:
+    f.write(str(proc.pid))
