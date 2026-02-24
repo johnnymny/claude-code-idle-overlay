@@ -8,7 +8,7 @@ A small always-on-top overlay that shows how long Claude Code has been waiting f
 
 ## The Problem
 
-When running multiple Claude Code sessions across different terminals, there's no way to tell which session finished and how long ago. The terminal tab title can't be changed due to ConPTY limitations.
+When running multiple Claude Code sessions across different terminals, there's no way to tell which session finished and how long ago.
 
 ## The Solution
 
