@@ -21,12 +21,13 @@ A tiny semi-transparent overlay appears at the bottom-right corner of the termin
 - Appears on the correct terminal window (not just the focused one)
 - Auto-closes when you send the next prompt
 - Click to dismiss manually
-- No dependencies beyond Python's built-in `tkinter`
+- No dependencies beyond Python's standard library (`ctypes`)
+- Never steals focus (`WS_EX_NOACTIVATE`)
 
 ## Requirements
 
 - **Windows** (uses Win32 API for window positioning)
-- **Python 3.8+** with tkinter (included in standard Python on Windows)
+- **Python 3.8+** (included in standard Python on Windows)
 - **Claude Code** with hooks support
 
 ## Installation
@@ -89,16 +90,17 @@ Edit the constants at the top of `idle_overlay.py`:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `BG_COLOR` | `#1e1e2e` | Background color |
-| `FG_COLOR` | `#cdd6f4` | Text color |
-| `ALPHA` | `0.85` | Window opacity (0.0 - 1.0) |
-| `FONT` | `("Segoe UI", 11)` | Font family and size |
+| `BG_COLORREF` | `0x2e1e1e` | Background color (BGR) |
+| `FG_COLORREF` | `0xf4d6cd` | Text color (BGR) |
+| `ALPHA_BYTE` | `216` | Window opacity (0-255) |
+| `FONT_NAME` | `"Segoe UI"` | Font family |
+| `FONT_SIZE` | `14` | Font size |
 | `COARSE_THRESHOLD` | `300` | Seconds before switching to minute-only display |
 | `MARGIN` | `10` | Pixels from window edge |
 
 ## Limitations
 
-- **Windows only** — uses `ctypes.windll` for Win32 window APIs and tkinter's `-toolwindow` attribute
+- **Windows only** — uses `ctypes.windll` for Win32 window APIs
 - **Terminal multiplexers (tmux, screen):** The overlay positions relative to the terminal window, not individual panes. In tmux setups, the overlay will appear at the bottom-right of the entire terminal window
 - **Agent Teams:** The overlay is suppressed during Agent Teams sessions to avoid noise from intermediate stops
 

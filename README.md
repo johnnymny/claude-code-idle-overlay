@@ -21,12 +21,13 @@ Claude Codeを複数ターミナルで並列に使っていると、どのセッ
 - 応答が完了したターミナルに正しく表示（フォーカス中のウィンドウではない）
 - 次のプロンプト送信で自動消去
 - クリックでも閉じられる
-- Python標準の`tkinter`のみ使用、追加依存なし
+- Python標準ライブラリのみ使用（`ctypes`）、追加依存なし
+- フォーカスを奪わない（`WS_EX_NOACTIVATE`）
 
 ## 要件
 
 - **Windows** (ウィンドウ位置取得にWin32 APIを使用)
-- **Python 3.8+** (tkinter付き、Windowsの標準Pythonに同梱)
+- **Python 3.8+** (Windowsの標準Pythonに同梱)
 - **Claude Code** (hooks対応)
 
 ## インストール
@@ -89,16 +90,17 @@ Stop → idle_overlay_stop_hook.py
 
 | 変数 | デフォルト | 説明 |
 |------|-----------|------|
-| `BG_COLOR` | `#1e1e2e` | 背景色 |
-| `FG_COLOR` | `#cdd6f4` | テキスト色 |
-| `ALPHA` | `0.85` | 不透明度 (0.0 - 1.0) |
-| `FONT` | `("Segoe UI", 11)` | フォント |
+| `BG_COLORREF` | `0x2e1e1e` | 背景色 (BGR) |
+| `FG_COLORREF` | `0xf4d6cd` | テキスト色 (BGR) |
+| `ALPHA_BYTE` | `216` | 不透明度 (0-255) |
+| `FONT_NAME` | `"Segoe UI"` | フォント |
+| `FONT_SIZE` | `14` | フォントサイズ |
 | `COARSE_THRESHOLD` | `300` | この秒数を超えると分単位のみの表示に切替 |
 | `MARGIN` | `10` | ウィンドウ端からのマージン (px) |
 
 ## 制限事項
 
-- **Windows専用** — Win32 APIとtkinterの`-toolwindow`属性を使用
+- **Windows専用** — Win32 API (`ctypes.windll`) を使用
 - **ターミナルマルチプレクサ (tmux, screen):** ペイン単位ではなくターミナルウィンドウ全体の右下に表示される
 - **Agent Teams:** Agent Teamsセッション中はオーバーレイを抑制
 
