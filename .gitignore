@@ -1,0 +1,3 @@
+.idle_overlay_stop_*
+.idle_overlay_rect_*
+__pycache__/
