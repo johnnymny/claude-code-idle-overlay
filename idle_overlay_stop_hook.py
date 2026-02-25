@@ -10,6 +10,7 @@ import os
 import glob
 import subprocess
 import time
+import ctypes
 
 LAUNCH_DELAY = 3  # seconds to wait before launching overlay
 
@@ -48,18 +49,12 @@ except Exception:
     pass
 
 start_time = time.time()
-import tempfile
 stop_file = os.path.join(HOOKS_DIR, f".idle_overlay_stop_{session_id}")
-pid_file = os.path.join(tempfile.gettempdir(), f".idle_overlay_pid_{session_id}")
 
-# Skip if overlay already running for this session
-try:
-    with open(pid_file, "r") as f:
-        old_pid = int(f.read().strip())
-    os.kill(old_pid, 0)  # check if process exists (signal 0 = no-op)
-    sys.exit(0)  # still alive → already idle, skip
-except Exception:
-    pass
+# Kill old overlay window by class name (more reliable than PID file)
+old_hwnd = ctypes.windll.user32.FindWindowW(f"IdleOverlay_{session_id}", None)
+if old_hwnd:
+    ctypes.windll.user32.PostMessageW(old_hwnd, 0x0010, 0, 0)  # WM_CLOSE
 
 # Clear stop file left by prompt hook, then wait.
 # Only a NEW prompt submission during the delay should prevent launch.
@@ -87,12 +82,8 @@ if transcript_path:
     except OSError:
         pass
 
-proc = subprocess.Popen(
+subprocess.Popen(
     [sys.executable, OVERLAY_SCRIPT, session_id, str(start_time)] + win_args,
     stdout=subprocess.DEVNULL,
     stderr=subprocess.DEVNULL,
 )
-
-# Save PID so next invocation can kill this overlay
-with open(pid_file, "w") as f:
-    f.write(str(proc.pid))
