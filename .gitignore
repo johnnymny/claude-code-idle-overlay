@@ -1,3 +1,5 @@
 .idle_overlay_stop_*
 .idle_overlay_rect_*
+.idle_overlay_pid_*
 __pycache__/
+NOTES.md

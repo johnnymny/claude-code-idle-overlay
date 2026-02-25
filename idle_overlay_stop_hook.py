@@ -1,9 +1,8 @@
-"""Stop hook: launch idle overlay on every response completion.
+"""Stop hook: launch idle overlay when Claude Code becomes truly idle.
 
 Reads terminal window rect saved by idle_overlay_prompt_hook.py at prompt time.
-Waits LAUNCH_DELAY seconds before launching to skip intermediate Stop events
-(e.g., between tool calls). If the user sends a new prompt during the delay,
-the stop sentinel file will exist and we skip launching.
+Waits LAUNCH_DELAY seconds, then checks transcript growth to distinguish
+real idle from interim stops. Only launches overlay if transcript stopped growing.
 """
 import sys
 import json
@@ -24,6 +23,7 @@ except Exception:
     sys.exit(0)
 
 session_id = payload.get("session_id", "")
+transcript_path = payload.get("transcript_path", "")
 if not session_id:
     sys.exit(0)
 
@@ -48,8 +48,9 @@ except Exception:
     pass
 
 start_time = time.time()
+import tempfile
 stop_file = os.path.join(HOOKS_DIR, f".idle_overlay_stop_{session_id}")
-pid_file = os.path.join(HOOKS_DIR, f".idle_overlay_pid_{session_id}")
+pid_file = os.path.join(tempfile.gettempdir(), f".idle_overlay_pid_{session_id}")
 
 # Skip if overlay already running for this session
 try:
@@ -66,10 +67,25 @@ try:
     os.remove(stop_file)
 except OSError:
     pass
+
+# Snapshot transcript size before delay
+try:
+    initial_size = os.path.getsize(transcript_path) if transcript_path else 0
+except OSError:
+    initial_size = 0
+
 time.sleep(LAUNCH_DELAY)
 
 if os.path.exists(stop_file):
     sys.exit(0)
+
+# Transcript grew during delay → Claude is still working (interim stop), skip
+if transcript_path:
+    try:
+        if os.path.getsize(transcript_path) > initial_size:
+            sys.exit(0)
+    except OSError:
+        pass
 
 proc = subprocess.Popen(
     [sys.executable, OVERLAY_SCRIPT, session_id, str(start_time)] + win_args,
