@@ -51,11 +51,6 @@ except Exception:
 start_time = time.time()
 stop_file = os.path.join(HOOKS_DIR, f".idle_overlay_stop_{session_id}")
 
-# Kill old overlay window by class name (more reliable than PID file)
-old_hwnd = ctypes.windll.user32.FindWindowW(f"IdleOverlay_{session_id}", None)
-if old_hwnd:
-    ctypes.windll.user32.PostMessageW(old_hwnd, 0x0010, 0, 0)  # WM_CLOSE
-
 # Clear stop file left by prompt hook, then wait.
 # Only a NEW prompt submission during the delay should prevent launch.
 try:
@@ -81,6 +76,11 @@ if transcript_path:
             sys.exit(0)
     except OSError:
         pass
+
+# Kill old overlay JUST before launching new one (avoids race with parallel Stop events)
+old_hwnd = ctypes.windll.user32.FindWindowW(f"IdleOverlay_{session_id}", None)
+if old_hwnd:
+    ctypes.windll.user32.PostMessageW(old_hwnd, 0x0010, 0, 0)  # WM_CLOSE
 
 subprocess.Popen(
     [sys.executable, OVERLAY_SCRIPT, session_id, str(start_time)] + win_args,
