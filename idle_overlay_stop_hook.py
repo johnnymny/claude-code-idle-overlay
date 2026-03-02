@@ -11,6 +11,7 @@ import glob
 import subprocess
 import time
 import ctypes
+from ctypes import wintypes
 
 LAUNCH_DELAY = 3  # seconds to wait before launching overlay
 
@@ -26,6 +27,12 @@ except Exception:
 session_id = payload.get("session_id", "")
 transcript_path = payload.get("transcript_path", "")
 if not session_id:
+    sys.exit(0)
+
+# Filter: non-interactive sessions (claude -p, subagents, Opus escalations)
+# Interactive sessions use bypassPermissions; non-interactive use default.
+permission_mode = payload.get("permission_mode", "")
+if permission_mode != "bypassPermissions":
     sys.exit(0)
 
 # Filter: no active team owned by this session (avoid overlay during Agent Teams)
@@ -77,10 +84,22 @@ if transcript_path:
     except OSError:
         pass
 
-# Kill old overlay JUST before launching new one (avoids race with parallel Stop events)
-old_hwnd = ctypes.windll.user32.FindWindowW(f"IdleOverlay_{session_id}", None)
-if old_hwnd:
-    ctypes.windll.user32.PostMessageW(old_hwnd, 0x0010, 0, 0)  # WM_CLOSE
+# Check for existing overlay via EnumWindows (FindWindowW unreliable — always returns 0)
+WNDENUMPROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+_target_class = f"IdleOverlay_{session_id}"
+_cls_buf = ctypes.create_unicode_buffer(256)
+_existing_hwnd = []
+
+def _enum_cb(hwnd, _):
+    ctypes.windll.user32.GetClassNameW(hwnd, _cls_buf, 256)
+    if _cls_buf.value == _target_class:
+        _existing_hwnd.append(hwnd)
+    return True
+
+ctypes.windll.user32.EnumWindows(WNDENUMPROC(_enum_cb), 0)
+
+if _existing_hwnd:
+    sys.exit(0)
 
 subprocess.Popen(
     [sys.executable, OVERLAY_SCRIPT, session_id, str(start_time)] + win_args,
